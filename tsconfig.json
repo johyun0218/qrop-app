@@ -1,4 +1,15 @@
 {
+  "ts-node": {
+     // It is faster to skip typechecking.
+     // Remove if you want ts-node to do typechecking.
+     "transpileOnly": true,
+     "files": true,
+    "compilerOptions": {
+      "target": "es2016",
+      "module": "CommonJS",
+      "esModuleInterop": true,
+    }
+   }, 
   "compilerOptions": {
     "target": "ES2017",
     "lib": ["dom", "dom.iterable", "esnext"],
@@ -8,11 +19,12 @@
     "noEmit": true,
     "esModuleInterop": true,
     "module": "esnext",
-    "moduleResolution": "bundler",
+    "moduleResolution": "node",
     "resolveJsonModule": true,
     "isolatedModules": true,
     "jsx": "preserve",
     "incremental": true,
+    "preserveValueImports": false,
     "plugins": [
       {
         "name": "next"
@@ -20,7 +32,7 @@
     ],
     "paths": {
       "@/*": ["./src/*"]
-    }
+    },
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
   "exclude": ["node_modules"]
