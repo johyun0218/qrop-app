@@ -1,0 +1,970 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  // previewFeatures = ["relationJoins"]
+
+  // output   = "../../packages/common/libs/src/generator/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum COMPANY_TYPE {
+  DALRISE
+  QINC
+  // DB 손해보험
+  DB
+  MICHELIN
+}
+
+enum MEMBER_COMPANY_STATUS {
+  /// 저장
+  SAVE
+  /// 제출
+  REQUEST
+
+  /// 심사 중
+  JUDGE
+
+  /// 승인
+  OK
+
+  /// 거절
+  REFUSE
+}
+
+enum USE_YN {
+  Y
+  N
+}
+
+enum USER_ROLE_TYPE {
+  ADMIN
+  /// 고객사 
+  COMPANY
+  /// 고객사 지사
+  COMPANY_BRANCH
+
+  /// 시공사
+  MEMBER
+
+  /// 시공 담당자 (공사 일지 작성)
+  WORK_MANAGER
+
+  /// 기본 값 USER
+  USER
+}
+
+enum BOARD_CONFIG_TYPE {
+  SIMPLE
+  BID_MAIN
+  BID_MAIN_DOC
+  BID_JOIN
+  BID_CONTACT_WORK
+  USER_PROFILE
+  /// 회사 면허정보
+  MEMBER_COMPANY
+}
+
+/// 공고 메인 상태 - 정상, 작업중 상태에서만 상태변경 가능
+enum BID_MAIN_STATE_TYPE {
+  /// 단순 저장 (현자 사용 안함
+
+  /// 정상
+  NORMAL
+
+  /// 낙찰
+  CONTRACT
+
+  /// 작업중
+  WORK
+
+  /// 취소
+  CANCEL
+
+  /// 종료
+  FINISH
+}
+
+/// 입찰 계약 타입
+enum BID_CONTRACT_TYPE {
+  /// 경쟁
+  COMPETE
+
+  /// 수의 계약
+  PRIVATE
+}
+
+enum BID_STATE_TYPE {
+  /// 관심 ? FAVORITE
+  INTEREST
+  /// 임시 저장
+  SAVE
+  /// 입찰
+  BID
+  /// 입찰 성공
+  SUCCESS
+
+  /// 입찰 실패
+  FAIL
+}
+
+/// 작업의 상태는 다른곳으로 변경
+enum BID_CONTRACT_STATUS {
+  /// 초기
+  CONTRACT
+  /// 작업중
+  // WORKING
+  /// 계약 취소
+  CONTRACT_DEST
+  /// 작업 취소
+  // WORK_CANCEL
+  /// 종료
+  // END
+  /// 정산 예정
+  SETTLEMENT_RESERVED
+  /// 정산 완료
+  SETTLEMENT
+}
+
+/// 작업 상태 필드 추가
+enum WORK_STATUS {
+  /// 초기준비 중
+  READY
+  /// 작업중
+  ING
+  /// 취소
+  CANCEL
+  /// 종료
+  END
+}
+
+model Admin {
+  no        Int         @id @default(autoincrement()) @map("ADMIN_NO")
+  name      String      @map("NAME") @db.VarChar(50)
+  useYn     USE_YN      @map("USE_YN")
+  contacts  AdminUser[]
+  createdAt DateTime    @default(now()) @map("CREATED_AT")
+
+  @@map("ADMIN")
+}
+
+/// ADMIN 관리자 - USER 정보에 비번 정보가 있다.
+model AdminUser {
+  no        Int      @id @default(autoincrement()) @map("CONTACT_NO")
+  name      String   @map("NAME") @db.VarChar(50)
+  userNo    Int      @unique @map("USER_NO")
+  Admin     Admin    @relation(fields: [adminNo], references: [no])
+  adminNo   Int      @map("ADMIN_NO")
+  createdAt DateTime @default(now()) @map("CREATED_AT")
+
+  @@map("ADMIN_USER")
+}
+
+/// 고객사
+model Company {
+  no          Int          @id @default(autoincrement()) @map("COMPANY_NO")
+  companyType COMPANY_TYPE @unique @map("COMPANY_TYPE")
+  name        String       @map("NAME") @db.VarChar(50)
+
+  useYn     USE_YN    @map("USE_YN")
+  createdAt DateTime  @default(now()) @map("CREATED_AT")
+  createdNo Int       @map("CREATED_NO")
+  updatedAt DateTime? @updatedAt @map("UPDATED_AT")
+  updatedNo Int?      @map("UPDATED_NO")
+
+  // users         User[]
+  boardConfig   BoardConfig[]
+  bidMain       BidMain[]
+  companyBranch CompanyBranch[]
+  users         CompanyUser[]
+
+  @@map("COMPANY")
+}
+
+/// 고객사의 사용자
+model CompanyUser {
+  no        Int       @id @default(autoincrement()) @map("NO")
+  name      String    @map("NAME") @db.VarChar(50)
+  userNo    Int       @map("USER_NO")
+  createdAt DateTime  @default(now()) @map("CREATED_AT")
+  createdNo Int       @map("CREATED_NO")
+  updatedAt DateTime? @updatedAt @map("UPDATED_AT")
+  updatedNo Int?      @map("UPDATED_NO")
+  Company   Company   @relation(fields: [companyNo], references: [no])
+  companyNo Int
+
+  @@map("COMPANY_USER")
+}
+
+/// 사업단 지점
+model CompanyBusinessGroupBranch {
+  cd String @id @map("CATEGORY_BRANCH_CD") @db.VarChar(30)
+
+  /// 지점명
+  name String @map("BRANCH_NM") @db.VarChar(200)
+
+  /// 순서
+  step Int @map("STEP")
+
+  useYn USE_YN
+
+  createdAt              DateTime             @default(now()) @map("CREATED_AT")
+  createdNo              Int                  @map("CREATED_NO")
+  updatedAt              DateTime?            @updatedAt @map("UPDATED_AT")
+  updatedNo              Int?                 @map("UPDATED_NO")
+  CompanyBusinessGroup   CompanyBusinessGroup @relation(fields: [companyBusinessGroupCd], references: [cd])
+  companyBusinessGroupCd String               @map("CATEGORY_CD")
+  bidMain                BidMain[]
+
+  @@map("COMPANY_BUSINESS_GROUP_BRANCH")
+}
+
+/// 고객사 지사,지점 - 시행사
+model CompanyBranch {
+  no        Int     @id @default(autoincrement()) @map("BRANCH_NO")
+  // name      String  @map("NAME") @db.VarChar(50)
+  // /// 대표자 이름
+  // repName   String  @map("REP_NAME") @db.VarChar(100)
+  /// 노출 여부
+  displayYn USE_YN  @map("USE_YN")
+  /// 지역명
+  areaName  String? @map("AREA_NAME") @db.VarChar(100)
+  /// 층수
+  floors    String? @map("FLOORS_NAME") @db.VarChar(50)
+  /// 렌탈 집기
+  furniture String? @map("FURNITURE_TEXT") @db.VarChar(5000)
+
+  /// 특이사항
+  remark              String?  @map("REMARK_TEXT") @db.VarChar(5000)
+  /// 사무실 주소
+  zipCode             String   @map("ZIP_CODE") @db.VarChar(30)
+  addressOffice       String   @map("ADDRESS_OFFICE") @db.VarChar(200)
+  addressOfficeDetail String   @map("ADDRESS_OFFICE_DETAIL") @db.VarChar(200)
+  Company             Company? @relation(fields: [companyNo], references: [no])
+  companyNo           Int?     @map("COMPANY_NO")
+
+  companyBusinessGroupCd       String @map("COMPANY_BUSINESS_GROUP_CD") @db.VarChar(30)
+  companyBusinessGroupBranchCd String @map("COMPANY_BUSINESS_GROUP_BRANCH_CD") @db.VarChar(30)
+
+  createdAt DateTime  @default(now()) @map("CREATED_AT")
+  createdNo Int       @map("CREATED_NO")
+  updatedAt DateTime? @updatedAt @map("UPDATED_AT")
+  updatedNo Int?      @map("UPDATED_NO")
+
+  users CompanyBranchUser[]
+
+  @@map("COMPANY_BRANCH")
+}
+
+/// 시행사 담당자
+model CompanyBranchUser {
+  no    Int     @id @default(autoincrement()) @map("CONTACT_NO")
+  email String  @map("EMAIL") @db.VarChar(255)
+  name  String? @map("NAME") @db.VarChar(100)
+  tel   String  @map("TEL") @db.VarChar(100)
+  /// 대표 여부 - 시행사 목록의 항목에 보여진다.
+  repYn USE_YN  @map("REP_YN")
+
+  /// 사용 여부
+  useYn           USE_YN        @map("USE_YN")
+  /// 사용자 ID (연관 관계 설정 하지 않음)
+  userNo          Int           @map("USER_NO")
+  createdAt       DateTime      @default(now()) @map("CREATED_AT")
+  createdNo       Int           @map("CREATED_NO")
+  updatedAt       DateTime?     @updatedAt @map("UPDATED_AT")
+  updatedNo       Int?          @map("UPDATED_NO")
+  CompanyBranch   CompanyBranch @relation(fields: [companyBranchNo], references: [no])
+  companyBranchNo Int           @map("COMPANY_BRANCH_NO")
+
+  @@map("COMPANY_BRANCH_USER")
+}
+
+/// 사업단 카테고리
+model CompanyBusinessGroup {
+  /// 카레고리 코드
+  cd String @id @map("CATEGORY_CD") @db.VarChar(30)
+
+  companyNo Int @map("COMPANY_NO")
+
+  /// 순서
+  step Int @map("STEP")
+
+  /// 사업단
+  name String @map("BUSINESS_GROUP_NM") @db.VarChar(200)
+
+  useYn USE_YN
+
+  createdAt DateTime  @default(now()) @map("CREATED_AT")
+  createdNo Int       @map("CREATED_NO")
+  updatedAt DateTime? @updatedAt @map("UPDATED_AT")
+  updatedNo Int?      @map("UPDATED_NO")
+
+  branchs CompanyBusinessGroupBranch[]
+  BidMain BidMain[]
+
+  @@map("COMPANY_BUSINESS_GROUP")
+}
+
+/// 시공사 시작 MEMBER COMPANY ##################################################################
+
+/// 회원사, 시공사 -> contractor 로 변경
+model MemberCompany {
+  no      Int    @id @default(autoincrement()) @map("MEMBER_NO")
+  /// 상호명
+  name    String @map("NAME") @db.VarChar(100)
+  /// 대표자 이름
+  repName String @map("REP_NAME") @db.VarChar(100)
+  email   String @map("EMAIL") @db.VarChar(255)
+  tel     String @map("TEL") @db.VarChar(100)
+  fax     String @map("FAX") @db.VarChar(100)
+
+  /// 상태
+  status MEMBER_COMPANY_STATUS @map("STATUS")
+
+  /// 사업자 등록번호
+  businessNo String @map("BUSINESS_NO") @db.VarChar(200)
+
+  /// 사무실 주소
+  addressOffice String @map("ADDRESS_OFFICE") @db.VarChar(200)
+
+  /// 귀속년도
+  attrYear String @map("ATTR_YEAR") @db.VarChar(4)
+  /// 업종코드 (국세청 코드)
+  tfbCode  String @map("TFB_CD") @db.VarChar(6)
+
+  /// 업종명
+  tfbName String @map("TFB_NM") @db.VarChar(50)
+
+  /// 업태명
+  businessTypeName String? @default("") @map("BUSINESS_TYPE_NM") @db.VarChar(50)
+
+  createdAt DateTime  @default(now()) @map("CREATED_AT")
+  createdNo Int       @map("CREATED_NO")
+  updatedAt DateTime? @updatedAt @map("UPDATED_AT")
+  updatedNo Int?      @map("UPDATED_NO")
+
+  memberCompanyApprovals MemberCompanyApproval[]
+  memberCompanyDocs      MemberCompanyDoc[]
+
+  /// 회원사 직원
+  users MemberUser[]
+
+  /// 입찰 참여
+  bidJoins BidJoin[]
+
+  /// 계약
+  bidContracts BidContract[]
+
+  /// 우선 협상 대상자
+  bidPreBidders BidPreBidder[]
+
+  @@map("MEMBER_COMPANY")
+}
+
+/// 시공사 검토 승인 - 업데이트는 없음
+model MemberCompanyApproval {
+  no        Int                   @id @default(autoincrement()) @map("NO")
+  /// 순서
+  step      Int                   @map("STEP")
+  /// 상태
+  status    MEMBER_COMPANY_STATUS @map("STATUS")
+  /// 메세지
+  message   String                @map("MESSAGE") @db.VarChar(5000)
+  createdAt DateTime              @default(now()) @map("CREATED_AT")
+  createdNo Int                   @map("CREATED_NO")
+
+  MemberCompany   MemberCompany? @relation(fields: [memberCompanyNo], references: [no])
+  memberCompanyNo Int?           @map("MEMBER_COMPANY_NO")
+
+  @@map("MEMBER_COMPANY_APPROVAL")
+}
+
+/// 면허정보 관리 - 필수등록 서류
+model MemberCompanyDoc {
+  no Int @id @default(autoincrement()) @map("DOC_NO")
+
+  /// 사업자 등록증 - BoardFile.No
+  businessRegistrationNo Int? @map("BUSINESS_REGISTRATION_NO")
+
+  /// 실내건축공사 면허정보 - BoardFile.No
+  interiorWorkNo Int? @map("INTERIOR_WORK_NO")
+
+  createdAt DateTime  @default(now()) @map("CREATED_AT")
+  createdNo Int       @map("CREATED_NO")
+  updatedAt DateTime? @updatedAt @map("UPDATED_AT")
+  updatedNo Int?      @map("UPDATED_NO")
+
+  MemberCompany   MemberCompany? @relation(fields: [memberCompanyNo], references: [no])
+  memberCompanyNo Int?           @map("MEMBER_COMPANY_NO")
+
+  @@map("MEMBER_COMPANY_DOC")
+}
+
+/// 회원사 담당자
+model MemberUser {
+  no    Int     @id @default(autoincrement()) @map("CONTACT_NO")
+  email String? @map("EMAIL") @db.VarChar(255)
+  name  String  @map("NAME") @db.VarChar(100)
+
+  /// 관리자 여부
+  adminYn USE_YN @map("MASTER_YN")
+
+  tel         String? @map("TEL") @db.VarChar(100)
+  fax         String? @map("FAX") @db.VarChar(100)
+  /// 담당자 휴대폰 번호
+  mobilePhone String? @map("MOBILE_PHONE") @db.VarChar(100)
+
+  /// 사용자 ID (연관 관계 설정 하지 않음)
+  userNo          Int?          @map("USER_NO")
+  MemberCompany   MemberCompany @relation(fields: [memberCompanyNo], references: [no])
+  memberCompanyNo Int           @map("MEMBER_NO")
+
+  createdAt DateTime  @default(now()) @map("CREATED_AT")
+  createdNo Int       @map("CREATED_NO")
+  updatedAt DateTime? @updatedAt @map("UPDATED_AT")
+  updatedNo Int?      @map("UPDATED_NO")
+
+  @@map("MEMBER_USER")
+}
+
+/// 시공사 끝 MEMBER COMPANY ##################################################################
+
+model User {
+  no        Int          @id @default(autoincrement()) @map("USER_NO")
+  userId    String       @unique @map("USER_ID") @db.VarChar(30)
+  name      String       @map("NAME") @db.VarChar(50)
+  email     String       @map("EMAIL") @db.VarChar(250)
+  tel       String       @map("TEL") @db.VarChar(100)
+  password  String       @map("PASSWORD") @db.VarChar(500)
+  salt      String       @map("SALT") @db.VarChar(100)
+  useYn     USE_YN       @map("USE_YN")
+  createdAt DateTime     @default(now()) @map("CREATED_AT")
+  createdNo Int          @map("CREATED_NO")
+  updatedAt DateTime?    @updatedAt @map("UPDATED_AT")
+  updatedNo Int?         @map("UPDATED_NO")
+  // Company   Company      @relation(fields: [companyNo], references: [no])
+  // companyNo Int          @map("COMPANY_NO")
+  roles     UserRole[]
+  // bidJoins  BidJoin[]
+  profile   UserProfile?
+
+  @@map("USER")
+}
+
+// 1:1 구조
+model UserProfile {
+  no         Int  @id @default(autoincrement()) @map("PROFILE_NO")
+  user       User @relation(fields: [userId], references: [no])
+  userId     Int  @unique @map("USER_ID")
+  /// BoardFile 의 no 값
+  imageUrlNo Int  @map("IMAGE_URL_NO")
+
+  @@map("USER_PROFILE")
+}
+
+model UserRole {
+  userNo   Int            @map("USER_NO")
+  roleType USER_ROLE_TYPE @map("ROLE_TYPE")
+
+  User User @relation(fields: [userNo], references: [no])
+
+  @@id([userNo, roleType])
+  @@map("USER_ROLE")
+}
+
+model BoardConfig {
+  configId  BOARD_CONFIG_TYPE @id @map("ID")
+  name      String            @map("NAME") @db.VarChar(50)
+  useYn     USE_YN            @map("USE_YN")
+  createdAt DateTime          @default(now()) @map("CREATED_AT")
+  createdNo Int               @map("CREATED_NO")
+  updatedAt DateTime?         @updatedAt @map("UPDATED_AT")
+  updatedNo Int?              @map("UPDATED_NO")
+  companyNo Int               @map("COMPANY_NO")
+  Company   Company           @relation(fields: [companyNo], references: [no])
+
+  @@map("BOARD_CONFIG")
+}
+
+model BoardSimple {
+  boardNo  Int               @id @default(autoincrement()) @map("NO")
+  /// BoardConfig 의 연관 key 연관 관계 설정 안함
+  configId BOARD_CONFIG_TYPE @map("CONFIG_ID")
+  title    String            @map("TITLE") @db.VarChar(200)
+  content  String            @map("CONTENT") @db.Text
+
+  createdAt DateTime  @default(now()) @map("CREATED_AT")
+  createdNo Int       @map("CREATED_NO")
+  updatedAt DateTime? @updatedAt @map("UPDATED_AT")
+  updatedNo Int?      @map("UPDATED_NO")
+  useYn     USE_YN    @map("USE_YN")
+
+  @@map("BOARD_SIMPLE")
+}
+
+/// 알림
+model Notification {
+  no      Int    @id @default(autoincrement()) @map("NO")
+  /// 사용자 id
+  userNo  Int    @map("USER_NO")
+  /// 말머리 해더 bullet point
+  bullet  String @map("BULLET") @db.VarChar(20)
+  /// 알림 제목
+  title   String @map("TITLE") @db.VarChar(300)
+  /// 알림 내용
+  content String @map("CONTENT") @db.VarChar(600)
+
+  createdAt   DateTime  @default(now()) @map("CREATED_AT")
+  createdName String    @map("CREATED_NAME") @db.VarChar(200)
+  /// 읽은 시간
+  readedAt    DateTime? @updatedAt @map("READED_AT")
+  readYn      USE_YN    @map("READ_YN")
+  deleteYn    USE_YN    @map("DELETE_YN")
+
+  push NotificationPush? // 1 : 1
+
+  @@map("NOTIFICATION")
+}
+
+/// 알림 push
+model NotificationPush {
+  no Int @id @default(autoincrement()) @map("NO")
+
+  // 테이블 복잡하져서 1개로 생성 처리
+  // YN 값으로 사용하지 읺고
+  // WAIT -> SEND -> SUCCESS -> FAIL
+  kakaoYn   String @map("KAKAO_YN") @db.VarChar(10)
+  emailYn   String @map("EMAIL_YN") @db.VarChar(10)
+  appPushYn String @map("APP_PUSH_YN") @db.VarChar(10)
+  chromYn   String @map("CHROM_YN") @db.VarChar(10)
+
+  kakaoSendDate   DateTime @map("KAKAO_SEND_DATE")
+  emailSendDate   DateTime @map("EMAIL_SEND_DATE")
+  appPushSendDate DateTime @map("APP_PUSH_SEND_DATE")
+  chromSendDate   DateTime @map("CHROM_SEND_DATE")
+
+  // 1 : 1
+  noti   Notification @relation(fields: [notiNo], references: [no])
+  notiNo Int          @unique
+
+  @@map("NOTIFICATION_PUSH")
+}
+
+model BidMain {
+  no Int @id @default(autoincrement()) @map("BID_NO")
+  // configId BOARD_CONFIG_TYPE @map("CONFIG_ID")
+
+  // 공고 Id
+  bidMngId String @map("BID_MNG_ID") @db.VarChar(50)
+
+  bidMainState BID_MAIN_STATE_TYPE @map("BID_MAIN_STATE_TYPE")
+
+  businessGroupCd       String                     @map("BUSINESS_GROUP_CD") @db.VarChar(30)
+  businessGroupBranchCd String                     @map("BUSINESS_GROUP_BRANCH_CD") @db.VarChar(30)
+  businessGroupBranch   CompanyBusinessGroupBranch @relation(fields: [businessGroupBranchCd], references: [cd])
+  businessGroup         CompanyBusinessGroup       @relation(fields: [businessGroupCd], references: [cd])
+
+  // 입찰 게시 기간
+  displayStartDate DateTime @map("DISPLAY_START_DATE")
+  displayEndDate   DateTime @map("DISPLAY_END_DATE")
+
+  // 공사기간
+  workStartDate DateTime @map("BID_START_DATE")
+  workEndDate   DateTime @map("BID_END_DATE")
+
+  /// 입찰 결과 발표일
+  effectiveDate DateTime @map("EFFECTIVE_DATE")
+
+  /// 입찰 기본 가격
+  bidBasePrice Decimal @map("BID_BASE_PRICE") @db.Decimal(15, 2)
+
+  // 투찰 하한가? 율? 
+  lowerLimitPrice Decimal @map("LOWER_LIMIT_PRICE") @db.Decimal(15, 2)
+
+  /// 입찰공고명
+  title    String @map("TITLE") @db.VarChar(200)
+  subTitle String @map("SUB_TITLE") @db.VarChar(200)
+  /// 특이사항
+  // particulars String @map("PARTICULARS") @db.VarChar(200)
+
+  /// 본문
+  content String @map("CONTENT") @db.Text
+
+  /// 우선 입찰 여부
+  preBidderYn USE_YN @map("PRE_BIDDER_YN")
+
+  /// 수의 계약 여부
+  contractType BID_CONTRACT_TYPE @map("CONTRACT_TYPE")
+
+  /// 노출 여부
+  displayYn USE_YN   @map("DISPLAY_YN")
+  createdAt DateTime @default(now()) @map("CREATED_AT")
+
+  createdNo Int    @map("CREATED_NO")
+  /// 작성자
+  createdNm String @map("CREATED_NM")
+
+  updatedAt DateTime? @updatedAt @map("UPDATED_AT")
+  updatedNo Int?      @map("UPDATED_NO")
+
+  /// 현장 주소
+  addressSpot String @map("ADDRESS_SPOT") @db.VarChar(200)
+
+  /// 현장주소 Lat
+  addressSpotLat Decimal @map("ADDRESS_SPOT_LAT")
+  /// 현장주소 Lng
+  addressSpotLng Decimal @map("ADDRESS_SPOT_LNG")
+
+  Company   Company @relation(fields: [companyNo], references: [no])
+  companyNo Int     @map("COMPANY_NO")
+
+  // CompanyBranch   CompanyBranch @relation(fields: [companyBranchNo], references: [no])
+  // companyBranchNo Int
+
+  /// 첨부파일
+  docs BidMainDoc[]
+
+  /// 제출 서류
+  submitDocs BidMainSubmitDoc[]
+
+  /// 공고 예가(예비가격) 공사 내역서
+  workCosts BidProvisionalWorkCost[]
+
+  /// 우선 협상 대상 회사
+  bidPreBidders BidPreBidder[]
+
+  bidJoins BidJoin[]
+
+  /// 입찰에 대해서 여러 업체가 계약이 될 수도 있으므로 1:N 처리
+  bidContracts BidContract[]
+
+  @@map("BID_MAIN")
+}
+
+/// 입찰 공고 첨부 파일
+model BidMainDoc {
+  no Int @id @default(autoincrement()) @map("DOC_NO")
+
+  /// 정렬순서
+  step      Int    @default(1) @map("STEP")
+  /// 입찰 참가서, 보안 및 청렴, 입찰서 
+  docType   String @map("DOC_TYPE") @db.VarChar(500)
+  fileNo    Int    @map("FILE_NO")
+  /// 첨부파일 노출 여부
+  displayYn USE_YN @map("DISPLAY_YN")
+
+  createdAt DateTime @default(now()) @map("CREATED_AT")
+  createdNo Int      @map("CREATED_NO")
+  BidMain   BidMain  @relation(fields: [bidMainNo], references: [no])
+  bidMainNo Int      @map("BID_MAIN_NO")
+
+  @@map("BID_MAIN_DOC")
+}
+
+/// 입찰 공고 제출 서류
+model BidMainSubmitDoc {
+  no Int @id @default(autoincrement()) @map("SUBMIT_DOC_NO")
+
+  /// 정렬순서
+  step Int    @default(1) @map("STEP")
+  /// 이름
+  name String @map("NAME") @db.VarChar(500)
+
+  createdAt DateTime @default(now()) @map("CREATED_AT")
+  createdNo Int      @map("CREATED_NO")
+  BidMain   BidMain  @relation(fields: [bidMainNo], references: [no])
+  bidMainNo Int      @map("BID_MAIN_NO")
+
+  bidJoinSubmitDocs BidJoinSubmitDoc[]
+
+  @@map("BID_MAIN_SUBMIT_DOC")
+}
+
+/// 우선 협상 대상자
+model BidPreBidder {
+  no        Int     @id @default(autoincrement()) @map("BIDDER_NO")
+  BidMain   BidMain @relation(fields: [bidMainNo], references: [no])
+  bidMainNo Int
+
+  createdAt DateTime @default(now()) @map("CREATED_AT")
+  createdNo Int      @map("CREATED_NO")
+
+  MemberCompany   MemberCompany @relation(fields: [memberCompanyNo], references: [no])
+  memberCompanyNo Int
+
+  @@map("BID_PRE_BIDDER")
+}
+
+/// 공고 예가(예비가격) 공사 내역서
+model BidProvisionalWorkCost {
+  no Int @id @default(autoincrement()) @map("WORK_COST_NO")
+
+  // 직접, 간접 공사비 구분
+  directYn USE_YN
+
+  /// 품명
+  title String @map("TITLE") @db.VarChar(200)
+
+  /// 규격
+  standard String @map("STANDARD") @db.VarChar(200)
+
+  /// 단위
+  unit String @map("UNIT") @db.VarChar(10)
+
+  /// 수량
+  quantity Decimal @map("QUANTITY") @db.Decimal(15, 2)
+
+  /// 재료비 단가
+  materialPrice Int? @map("MATERIAL_PRICE")
+  /// 재료비 금액
+  materialCost  Int? @map("MATERIAL_COST")
+
+  /// 노무비 단가
+  laborPrice Int? @map("LABOR_PRICE")
+  /// 노무비 금액
+  laborCost  Int? @map("LABOR_COST")
+
+  /// 경비 단가
+  expensePrice Int? @map("EXPENSE_PRICE")
+  /// 경비 금액
+  expenseCost  Int? @map("EXPENSE_COST")
+
+  /// 비고
+  note      String  @map("NOTE") @db.VarChar(5000)
+  BidMain   BidMain @relation(fields: [bidMainNo], references: [no])
+  bidMainNo Int
+
+  createdAt DateTime @default(now()) @map("CREATED_AT")
+  createdNo Int      @map("CREATED_NO")
+
+  @@map("BID_PROVISIONAL_WORK_COST")
+}
+
+/// 공고 예가(예비가격) 공사 견적 내역서
+model BidProvisionalWorkEstimateCost {
+  // no            Int      @id @default(autoincrement()) @map("NO")
+  bidJoinJoinNo Int
+  workCostNo    Int @map("WORK_COST_NO")
+
+  /// 수량 (여기에 수량이 들어갈지는 확인)
+  quantity Decimal @map("QUANTITY") @db.Decimal(15, 2)
+
+  /// 재료비 단가
+  materialPrice Int? @map("MATERIAL_PRICE")
+  /// 재료비 금액
+  materialCost  Int? @map("MATERIAL_COST")
+
+  /// 노무비 단가
+  laborPrice Int? @map("LABOR_PRICE")
+  /// 노무비 금액
+  laborCost  Int? @map("LABOR_COST")
+
+  /// 경비 단가
+  expensePrice Int? @map("EXPENSE_PRICE")
+  /// 경비 금액
+  expenseCost  Int? @map("EXPENSE_COST")
+
+  BidJoin BidJoin @relation(fields: [bidJoinJoinNo], references: [joinNo])
+
+  @@id([bidJoinJoinNo, workCostNo])
+  @@map("BID_PROVISIONAL_WORK_ESTIMATE_COST")
+}
+
+/// 입찰 참여 - 참여시 입찰 공고 하위사항도 포함할지??
+model BidJoin {
+  joinNo  Int      @id @default(autoincrement()) @map("JOIN_NO")
+  // configId BOARD_CONFIG_TYPE @map("CONFIG_ID")
+  BidMain BidMain? @relation(fields: [bidNo], references: [no])
+  bidNo   Int?     @map("BID_NO")
+  // User    User?    @relation(fields: [userNo], references: [no])
+  userNo  Int?     @map("USER_NO")
+
+  /// 입찰 상태
+  bidStatus BID_STATE_TYPE @default(SAVE) @map("BID_STATUS")
+
+  /// 입찰가격
+  bidPrice Decimal @map("BID_BASE_PRICE") @db.Decimal(15, 2)
+
+  createdAt       DateTime      @default(now()) @map("CREATED_AT")
+  createdNo       Int           @map("CREATED_NO")
+  updatedAt       DateTime?     @updatedAt @map("UPDATED_AT")
+  updatedNo       Int?          @map("UPDATED_NO")
+  MemberCompany   MemberCompany @relation(fields: [memberCompanyNo], references: [no])
+  memberCompanyNo Int           @map("MEMBER_COMPANY_NO")
+
+  workEstimates BidProvisionalWorkEstimateCost[]
+
+  bidJoinSubmitDocs BidJoinSubmitDoc[]
+
+  @@map("BID_JOIN")
+}
+
+/// 입찰 참여 제출 서류1
+model BidJoinSubmitDoc {
+  no Int @id @default(autoincrement()) @map("JOIN_DOC_NO")
+
+  /// 이름
+  fileNo Int @map("FILE_NO")
+
+  createdAt          DateTime          @default(now()) @map("CREATED_AT")
+  createdNo          Int               @map("CREATED_NO")
+  BidJoin            BidJoin?          @relation(fields: [bidJoinNo], references: [joinNo])
+  bidJoinNo          Int?              @map("BID_JOIN_NO")
+  BidMainSubmitDoc   BidMainSubmitDoc? @relation(fields: [bidMainSubmitDocNo], references: [no])
+  bidMainSubmitDocNo Int?              @map("BID_MAIN_SUBMIT_DOC_NO")
+
+  @@map("BID_JOIN_SUBMIT_DOC")
+}
+
+/// 입찰 계약이 완료 건
+model BidContract {
+  no Int @id @default(autoincrement()) @map("CONTRACT_NO")
+
+  /// 입찰 업체 우선 순위 (여러 업체일 경우)
+  priority      Int     @default(1) @map("PRIORITY")
+  /// 계약 가격
+  contractPrice Decimal @map("CONTRACT_PRICE") @db.Decimal(15, 2)
+
+  /// 선금, 중도금, 완료금 처리는 필요한가??
+
+  /// 계약 상태
+  contractStatus BID_CONTRACT_STATUS @map("CONTRACT_STATUS")
+
+  /// 작업 상태
+  workStatus WORK_STATUS @map("WORK_STATUS")
+
+  /// 정산 여부
+  // settlementYn USE_YN @default(value: N) @map("SETTLEMENT_YN")
+
+  /// 작업 시작일
+  workStartDate DateTime? @map("WORK_START_DATE")
+  /// 작업 종료일
+  workEndDate   DateTime? @map("WORK_END_DATE")
+
+  MemberCompany   MemberCompany @relation(fields: [memberCompanyNo], references: [no])
+  memberCompanyNo Int           @map("MEMBER_COMPANY_NO")
+  BidMain         BidMain       @relation(fields: [bidMainNo], references: [no])
+  bidMainNo       Int           @map("BID_NO")
+
+  createdAt DateTime  @default(now()) @map("CREATED_AT")
+  createdNo Int       @map("CREATED_NO")
+  updatedAt DateTime? @updatedAt @map("UPDATED_AT")
+  updatedNo Int?      @map("UPDATED_NO")
+
+  bidContractWorks BidContractWork[]
+  statusHistorys   BidContractStatusHistory[]
+
+  @@map("BID_CONTRACT")
+}
+
+model BidContractStatusHistory {
+  no             Int                 @id @default(autoincrement()) @map("HIST_NO")
+  contractStatus BID_CONTRACT_STATUS @map("CONTRACT_STATUS")
+  BidContract    BidContract         @relation(fields: [bidContractNo], references: [no])
+  bidContractNo  Int                 @map("CONTRACT_NO")
+
+  createdAt DateTime @default(now()) @map("CREATED_AT")
+  createdNo Int      @map("CREATED_NO")
+
+  @@map("BID_CONTRACT_STATUS_HISTORY")
+}
+
+/// 입찰 계약이 완료건에 대한 작업 기록
+model BidContractWork {
+  workNo Int @id @default(autoincrement()) @map("WORK_NO")
+
+  /// 작업일 - 2024-06-15
+  workDay String @map("WORK_DAY") @db.VarChar(10)
+
+  /// 작업자
+  worker String @map("WORKER") @db.VarChar(50)
+
+  /// 작업 사항 제목
+  name String @map("NAME") @db.VarChar(300)
+
+  /// 작업 사항 내용
+  remark String @map("REMARK") @db.VarChar(3000)
+
+  /// 작업 시작 시간 : 09:00
+  startTime String @map("START_TIME") @db.VarChar(5)
+
+  /// 작업 종료 시간  : 16:00
+  endTime String @map("END_TIME") @db.VarChar(5)
+
+  /// 작업 인원
+  workPerson Int @map("WORK_PERSON")
+
+  /// 작업에 대한 첨부 - BID_CONTACT_WORK
+
+  createdAt     DateTime    @default(now()) @map("CREATED_AT")
+  createdNo     Int         @map("CREATED_NO")
+  updatedAt     DateTime?   @updatedAt @map("UPDATED_AT")
+  updatedNo     Int?        @map("UPDATED_NO")
+  BidContract   BidContract @relation(fields: [bidContractNo], references: [no])
+  bidContractNo Int         @map("CONTRACT_NO")
+
+  workFiles BidContractWorkFile[]
+
+  @@map("BID_CONTRACT_WORK")
+}
+
+/// 작업 사항 파일 목록
+model BidContractWorkFile {
+  no        Int             @id @default(autoincrement()) @map("NO")
+  step      Int             @default(1) @map("STEP")
+  fileNo    Int             @map("FILE_NO")
+  createdAt DateTime        @default(now()) @map("CREATED_AT")
+  Work      BidContractWork @relation(fields: [workNo], references: [workNo])
+  workNo    Int             @map("WORK_NO")
+
+  @@map("BID_CONTRACT_WORK_FILE")
+}
+
+// model BoardMatchFile {
+//   matchNo  Int               @id @default(autoincrement()) @map("MATCH_NO")
+//   configId BOARD_CONFIG_TYPE @map("CONFIG_ID")
+//   boardNo  Int               @map("BOARD_NO")
+//   // fileId   Int
+//   files    BoardFile[]
+
+//   @@unique(name: "matchUnique", [configId, boardNo])
+//   @@map("BOARD_MATCH_FILE")
+// }
+
+/// 별지의 첨부 파일 - 연관관계 설정 하지 않음
+model BoardFile {
+  no Int @id @default(autoincrement()) @map("FILE_NO")
+
+  /// 웹 경로
+  fileUrl String @map("FILE_URL") @db.VarChar(500)
+
+  /// 화면에 보일 원본 파일 이름
+  originalName String @map("ORIGINAL_NAME") @db.VarChar(500)
+
+  /// 파일 mimetype
+  mimeType String @map("MIME_TYPE") @db.VarChar(500)
+
+  /// 파일 사이즈
+  size Int @map("SIZE")
+
+  createdAt DateTime           @default(now()) @map("CREATED_AT")
+  createdNo Int                @map("CREATED_NO")
+  updatedAt DateTime?          @updatedAt @map("UPDATED_AT")
+  updatedNo Int?               @map("UPDATED_NO")
+  // match     BoardMatchFile? @relation(fields: [matchId], references: [no])
+  // matchId   Int?            @map("MATCH_FILE_NO")
+  configId  BOARD_CONFIG_TYPE? @map("CONFIG_ID")
+  boardNo   Int?               @map("BOARD_NO")
+
+  // BoardMatchFile   BoardMatchFile? @relation(fields: [boardMatchFileNo], references: [matchNo])
+  // boardMatchFileNo Int?
+  @@map("BOARD_FILE")
+}
