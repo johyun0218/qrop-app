@@ -42,7 +42,7 @@ const Navbar = () => {
               height={16}
               className="w-4 h-4"
             />
-            <span>Friends</span>
+            <span>시공사</span>
           </Link>
           <Link href="/" className="flex gap-2">
             <Image
@@ -52,7 +52,7 @@ const Navbar = () => {
               height={16}
               className="w-4 h-4"
             />
-            <span>Stories</span>
+            <span>작업 일지</span>
           </Link>
         </div>
         <div className="hidden xl:flex p-2 bg-slate-100 items-center rounded-md">
