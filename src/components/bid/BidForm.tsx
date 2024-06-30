@@ -1,35 +1,50 @@
 'use client';
-import React, { useState } from 'react';
+import prisma from '@/lib/client';
+import {
+  CompanyBrachSearchType,
+  CompanyBranchSearchResponse,
+} from '@/lib/companyBranch/response/company.branch.response';
+import { Company } from '@prisma/client';
+import React, { useEffect, useState } from 'react';
 import Datepicker, {
   DateRangeType,
   DateType,
   DateValueType,
 } from 'react-tailwindcss-datepicker';
 
-const BidForm = () => {
-  const [value, setValue] = useState({
+const BidForm = ({
+  companys,
+  branchResponse,
+}: {
+  companys: Company[];
+  branchResponse: CompanyBranchSearchResponse;
+}) => {
+  const [value, setValue] = useState<DateValueType>({
     startDate: new Date(),
-    endDate: new Date().setMonth(11),
+    endDate: new Date(new Date().setDate(new Date().getDay() + 1)),
   });
+  const [branchs, setBranchs] = useState<CompanyBrachSearchType[]>([]);
+  const [selectedCompany, setSelectedCompany] = useState('');
+
   const handleValueChange = (newValue: DateValueType) => {
-    console.log('newValue:', newValue);
     setValue(newValue);
   };
+
+  useEffect(() => {
+    setBranchs(
+      branchResponse.data.filter(
+        (f) => f.companyNo == parseInt(selectedCompany, 10),
+      ),
+    );
+  }, [selectedCompany]);
 
   return (
     <form className='className="flex flex-col gap-6"'>
       <div className=" p-6 bg-gray-100 flex items-center justify-center">
         <div className="container max-w-screen-lg mx-auto">
           <div>
-            <h2 className="font-semibold text-xl text-gray-600">
-              입찰공고 등록
-            </h2>
-            <p className="text-gray-500 mb-6">
-              입찰 공고 세부 사항을 등록 할 수 있습니다.
-            </p>
-
             <div className="bg-white rounded shadow-lg p-4 px-4 md:p-8 mb-6">
-              <div className="grid gap-4 gap-y-2 text-sm grid-cols-1 lg:grid-cols-3">
+              <div className="grid gap-4 gap-y-2 text-sm grid-cols-1 lg:grid-cols-2">
                 <div className="text-gray-600">
                   <p className="font-medium text-lg">공고 기본</p>
                   <p>필수 입력 값입니다.</p>
@@ -44,7 +59,7 @@ const BidForm = () => {
                         name="bidMngId"
                         id="bidMngId"
                         className="h-10 border mt-1 rounded px-4 w-full bg-gray-50"
-                        value=""
+                        defaultValue={''}
                       />
                     </div>
 
@@ -56,7 +71,7 @@ const BidForm = () => {
                           name="displayYn"
                           id="displayYn_Y"
                           className="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500 disabled:opacity-50 disabled:pointer-events-none dark:bg-neutral-800 dark:border-neutral-700 dark:checked:bg-blue-500 dark:checked:border-blue-500 dark:focus:ring-offset-gray-800"
-                          value="Y"
+                          defaultValue={'Y'}
                         />
                         <label htmlFor="displayYn_Y" className="ml-2 pr-5">
                           공개
@@ -66,7 +81,7 @@ const BidForm = () => {
                           name="displayYn"
                           id="displayYn_N"
                           className="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500 disabled:opacity-50 disabled:pointer-events-none dark:bg-neutral-800 dark:border-neutral-700 dark:checked:bg-blue-500 dark:checked:border-blue-500 dark:focus:ring-offset-gray-800"
-                          value="N"
+                          defaultValue={'N'}
                         />
                         <label htmlFor="displayYn_N" className="ml-2">
                           비공개
@@ -76,101 +91,85 @@ const BidForm = () => {
                       {/*  */}
                     </div>
 
-                    <div className="md:col-span-3">
+                    <div className="md:col-span-5">
                       <label htmlFor="address">접수기간</label>
-                      <Datepicker value={value} onChange={handleValueChange} />
+                      <Datepicker
+                        value={value}
+                        onChange={handleValueChange}
+                        inputClassName="h-10 border mt-1 rounded px-4 w-full bg-gray-50"
+                      />
                     </div>
-
-                    <div className="md:col-span-2">
-                      <label htmlFor="city">City</label>
-                      <input
-                        type="text"
-                        name="city"
-                        id="city"
-                        className="h-10 border mt-1 rounded px-4 w-full bg-gray-50"
-                        value=""
-                        placeholder=""
+                    <div className="md:col-span-5">
+                      <label htmlFor="address">공사기간</label>
+                      <Datepicker
+                        value={value}
+                        onChange={handleValueChange}
+                        inputClassName="h-10 border mt-1 rounded px-4 w-full bg-gray-50"
+                      />
+                    </div>
+                    <div className="md:col-span-5">
+                      <label htmlFor="address">입찰결과일</label>
+                      <Datepicker
+                        value={value}
+                        asSingle={true}
+                        onChange={handleValueChange}
+                        inputClassName="h-10 border mt-1 rounded px-4 w-full bg-gray-50"
                       />
                     </div>
 
-                    <div className="md:col-span-2">
-                      <label htmlFor="country">Country / region</label>
-                      <div className="h-10 bg-gray-50 flex border border-gray-200 rounded items-center mt-1">
-                        <input
-                          name="country"
-                          id="country"
-                          placeholder="Country"
-                          className="px-4 appearance-none outline-none text-gray-800 w-full bg-transparent"
-                          value=""
-                        />
-                        <button className="cursor-pointer outline-none focus:outline-none transition-all text-gray-300 hover:text-red-600">
-                          <svg
-                            className="w-4 h-4 mx-2 fill-current"
-                            xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                          >
-                            <line x1="18" y1="6" x2="6" y2="18"></line>
-                            <line x1="6" y1="6" x2="18" y2="18"></line>
-                          </svg>
-                        </button>
-                        <button className="cursor-pointer outline-none focus:outline-none border-l border-gray-200 transition-all text-gray-300 hover:text-blue-600">
-                          <svg
-                            className="w-4 h-4 mx-2 fill-current"
-                            xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                          >
-                            <polyline points="18 15 12 9 6 15"></polyline>
-                          </svg>
-                        </button>
-                      </div>
+                    <div className="md:col-span-1">
+                      <label htmlFor="country">시행사</label>
+                      <select
+                        id="company"
+                        name="company"
+                        className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                        onChange={(e) => setSelectedCompany(e.target.value)}
+                        value={selectedCompany}
+                      >
+                        <option value={''}>-- 시행사 --</option>
+                        {companys.map((company) => {
+                          return (
+                            <option key={company.no} value={company.no}>
+                              {company.name}
+                            </option>
+                          );
+                        })}
+                      </select>
                     </div>
 
                     <div className="md:col-span-2">
-                      <label htmlFor="state">State / province</label>
-                      <div className="h-10 bg-gray-50 flex border border-gray-200 rounded items-center mt-1">
-                        <input
-                          name="state"
-                          id="state"
-                          placeholder="State"
-                          className="px-4 appearance-none outline-none text-gray-800 w-full bg-transparent"
-                          value=""
-                        />
-                        <button className="cursor-pointer outline-none focus:outline-none transition-all text-gray-300 hover:text-red-600">
-                          <svg
-                            className="w-4 h-4 mx-2 fill-current"
-                            xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                          >
-                            <line x1="18" y1="6" x2="6" y2="18"></line>
-                            <line x1="6" y1="6" x2="18" y2="18"></line>
-                          </svg>
-                        </button>
-                        <button className="cursor-pointer outline-none focus:outline-none border-l border-gray-200 transition-all text-gray-300 hover:text-blue-600">
-                          <svg
-                            className="w-4 h-4 mx-2 fill-current"
-                            xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                          >
-                            <polyline points="18 15 12 9 6 15"></polyline>
-                          </svg>
-                        </button>
-                      </div>
+                      <label htmlFor="country">시행사</label>
+                      <select
+                        id="countries"
+                        className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                        defaultValue={''}
+                      >
+                        <option>Choose a country</option>
+                        {branchs.map((branch) => {
+                          return (
+                            <option key={branch.no} value="CA">
+                              {branch.companyBusinessGroupName} &gt;{' '}
+                              {branch.companyBusinessGroupBranchName} &gt;{' '}
+                              {branch.areaName}
+                            </option>
+                          );
+                        })}
+                      </select>
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <label htmlFor="country">시행사</label>
+                      <select
+                        id="countries"
+                        className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                        defaultValue={''}
+                      >
+                        <option>Choose a country</option>
+                        <option value="US">United States</option>
+                        <option value="CA">Canada</option>
+                        <option value="FR">France</option>
+                        <option value="DE">Germany</option>
+                      </select>
                     </div>
 
                     <div className="md:col-span-1">
@@ -181,7 +180,7 @@ const BidForm = () => {
                         id="zipcode"
                         className="transition-all flex items-center h-10 border mt-1 rounded px-4 w-full bg-gray-50"
                         placeholder=""
-                        value=""
+                        defaultValue={''}
                       />
                     </div>
 
@@ -192,6 +191,7 @@ const BidForm = () => {
                           name="billing_same"
                           id="billing_same"
                           className="form-checkbox"
+                          defaultValue={''}
                         />
                         <label htmlFor="billing_same" className="ml-2">
                           My billing address is different than above.
@@ -199,7 +199,7 @@ const BidForm = () => {
                       </div>
                     </div>
 
-                    <div className="md:col-span-2">
+                    {/* <div className="md:col-span-2">
                       <label htmlFor="soda">How many soda pops?</label>
                       <div className="h-10 w-28 bg-gray-50 flex border border-gray-200 rounded items-center mt-1">
                         <button className="cursor-pointer outline-none focus:outline-none border-r border-gray-200 transition-all text-gray-500 hover:text-blue-600">
@@ -210,9 +210,9 @@ const BidForm = () => {
                             fill="currentColor"
                           >
                             <path
-                              fill-rule="evenodd"
+                              fillRule="evenodd"
                               d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                              clip-rule="evenodd"
+                              clipRule="evenodd"
                             />
                           </svg>
                         </button>
@@ -221,7 +221,7 @@ const BidForm = () => {
                           id="soda"
                           placeholder="0"
                           className="px-2 text-center appearance-none outline-none text-gray-800 w-full bg-transparent"
-                          value="0"
+                          defaultValue={'0'}
                         />
                         <button className="cursor-pointer outline-none focus:outline-none border-l border-gray-200 transition-all text-gray-500 hover:text-blue-600">
                           <svg
@@ -231,14 +231,14 @@ const BidForm = () => {
                             fill="currentColor"
                           >
                             <path
-                              fill-rule="evenodd"
+                              fillRule="evenodd"
                               d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z"
-                              clip-rule="evenodd"
+                              clipRule="evenodd"
                             />
                           </svg>
                         </button>
                       </div>
-                    </div>
+                    </div> */}
 
                     <div className="md:col-span-5 text-right">
                       <div className="inline-flex items-end">
